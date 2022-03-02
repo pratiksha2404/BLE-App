@@ -60,6 +60,13 @@ public class MainActivity extends AppCompatActivity
         mPlayFiBLESDK = PlayFiBLESDK.getInstance();
         mPlayFiBLESDK.initializeSDK( getApplicationContext() );
 
+//        //Check if your device support Bluetooth Low Energy
+//        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)){
+//            Log.d(TAG,"Support BLUETOOTH_LE");
+//        }else{
+//            Log.d(TAG,"NOT Support BLUETOOTH_LE");
+//        }
+
         listener = new PlayFiBLESDK.OnScanDeviceFoundListener()
         {
             @Override
@@ -126,7 +133,7 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onDismiss( DialogInterface dialog )
                     {
-                        requestPermissions( new String[]{ Manifest.permission.ACCESS_COARSE_LOCATION }, PERMISSION_REQUEST_COARSE_LOCATION );
+                        requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, PERMISSION_REQUEST_COARSE_LOCATION );
                     }
                 } );
                 builder.show();
