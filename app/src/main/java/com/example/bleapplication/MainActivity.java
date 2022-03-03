@@ -1,7 +1,5 @@
 package com.example.bleapplication;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -12,6 +10,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -22,16 +21,27 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.playfiblesdk.PlayFiBLESDK;
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 public class MainActivity extends AppCompatActivity
 {
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
-    private Button bStatus, mScan, mStopScan;
+    private static final int REQUEST_CHECK_SETTINGS = 2;
+    private Button bStatus, mScan, mStopScan, bLocation;
     private TextView mText;
     private ListView mDeviceListView;
     private String TAG = "BLELogs";
@@ -40,7 +50,6 @@ public class MainActivity extends AppCompatActivity
     private PlayFiBLESDK.OnDeviceConnectionListener deviceConnectionListener;
     private ArrayList< BluetoothDevice > mDeviceList;
     int mErrorCode;
-    BluetoothAdapter btAdapter;
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -48,13 +57,16 @@ public class MainActivity extends AppCompatActivity
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_main );
         bStatus = findViewById( R.id.button );
+        bLocation = findViewById( R.id.button4 );
         mScan = findViewById( R.id.button2 );
         mStopScan = findViewById( R.id.button3 );
         mText = findViewById( R.id.textView );
         mDeviceListView = findViewById( R.id.listview );
-        btAdapter = BluetoothAdapter.getDefaultAdapter();
+
         mDeviceList = new ArrayList<>();
-        ArrayAdapter arrayAdapter = new ArrayAdapter( MainActivity.this, android.R.layout.activity_list_item, android.R.id.text1, mDeviceList );
+        ArrayAdapter<BluetoothDevice> arrayAdapter = new ArrayAdapter<BluetoothDevice>( MainActivity.this,
+                                                                                        android.R.layout.simple_list_item_1,
+                                                                                        android.R.id.text1, mDeviceList );
         mDeviceListView.setAdapter( arrayAdapter );
 
         mPlayFiBLESDK = PlayFiBLESDK.getInstance();
@@ -118,6 +130,16 @@ public class MainActivity extends AppCompatActivity
                 }
             }
         } );
+
+        bLocation.setOnClickListener( new View.OnClickListener()
+        {
+            @Override
+            public void onClick( View v )
+            {
+                enableLocation();
+            }
+        } );
+
 
         // Make sure we have access coarse location enabled, if not, prompt the user to enable it
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M )
@@ -219,6 +241,58 @@ public class MainActivity extends AppCompatActivity
 
         } );
     }
+
+    private void enableLocation()
+    {
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest( createLocationRequest() )
+                .setNeedBle( true );
+        SettingsClient client = LocationServices.getSettingsClient( this );
+        Task< LocationSettingsResponse > task = client.checkLocationSettings( builder.build() );
+        task.addOnSuccessListener( this, locationSettingsResponse -> {
+            // All location settings are satisfied. The client can initialize
+            // location requests here.
+            // ...
+            Log.d( TAG, "enableLocationAndBLE: Success... " );
+
+            Toast.makeText( getApplicationContext(), "Location is enabled", Toast.LENGTH_SHORT ).show();
+        } );
+
+        task.addOnFailureListener( this, e -> {
+            if( e instanceof ResolvableApiException )
+            {
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                Log.d( TAG, "enableLocationAndBLE: Failure... " );
+
+                try
+                {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    Toast.makeText( getApplicationContext(), "Location is NOT enabled", Toast.LENGTH_SHORT ).show();
+
+                    ResolvableApiException resolvable = ( ResolvableApiException ) e;
+                    resolvable.startResolutionForResult( MainActivity.this,
+                                                         REQUEST_CHECK_SETTINGS );
+                }
+                catch ( IntentSender.SendIntentException sendEx )
+                {
+                    // Ignore the error.
+                }
+            }
+        } );
+
+    }
+
+    protected LocationRequest createLocationRequest()
+    {
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setInterval( 10000 );
+        locationRequest.setFastestInterval( 5000 );
+        locationRequest.setPriority( LocationRequest.PRIORITY_HIGH_ACCURACY );
+        return locationRequest;
+    }
+
 
     @Override
     public void onRequestPermissionsResult( int requestCode,
