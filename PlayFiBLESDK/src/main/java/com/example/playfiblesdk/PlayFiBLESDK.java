@@ -150,7 +150,6 @@ public class PlayFiBLESDK
         }
     };
 
-    @SuppressLint( "MissingPermission" )
     public void scanDevices()
     {
         bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();

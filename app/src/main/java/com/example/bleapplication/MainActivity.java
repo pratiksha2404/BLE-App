@@ -144,18 +144,19 @@ public class MainActivity extends AppCompatActivity
         // Make sure we have access coarse location enabled, if not, prompt the user to enable it
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M )
         {
-            if( this.checkSelfPermission( Manifest.permission.ACCESS_COARSE_LOCATION ) != PackageManager.PERMISSION_GRANTED )
+            if( this.checkSelfPermission( Manifest.permission.ACCESS_COARSE_LOCATION ) != PackageManager.PERMISSION_GRANTED ||
+                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_SCAN ) != PackageManager.PERMISSION_GRANTED )
             {
                 final AlertDialog.Builder builder = new AlertDialog.Builder( this );
-                builder.setTitle( "This app needs location access" );
-                builder.setMessage( "Please grant location access so this app can detect peripherals." );
+                builder.setTitle( "This app needs location and bluetooth scan access" );
+                builder.setMessage( "Please grant location and bluetooth scan access so this app can detect peripherals." );
                 builder.setPositiveButton( android.R.string.ok, null );
                 builder.setOnDismissListener( new DialogInterface.OnDismissListener()
                 {
                     @Override
                     public void onDismiss( DialogInterface dialog )
                     {
-                        requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, PERMISSION_REQUEST_COARSE_LOCATION );
+                        requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_SCAN }, PERMISSION_REQUEST_COARSE_LOCATION );
                     }
                 } );
                 builder.show();
