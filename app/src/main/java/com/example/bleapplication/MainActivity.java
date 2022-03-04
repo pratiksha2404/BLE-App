@@ -145,11 +145,12 @@ public class MainActivity extends AppCompatActivity
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M )
         {
             if( this.checkSelfPermission( Manifest.permission.ACCESS_COARSE_LOCATION ) != PackageManager.PERMISSION_GRANTED ||
-                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_SCAN ) != PackageManager.PERMISSION_GRANTED )
+                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_SCAN ) != PackageManager.PERMISSION_GRANTED ||
+                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_CONNECT ) != PackageManager.PERMISSION_GRANTED )
             {
                 final AlertDialog.Builder builder = new AlertDialog.Builder( this );
-                builder.setTitle( "This app needs location and bluetooth scan access" );
-                builder.setMessage( "Please grant location and bluetooth scan access so this app can detect peripherals." );
+                builder.setTitle( "This app needs Location, Bluetooth Scan and Bluetooth Connect access" );
+                builder.setMessage( "Please grant location, bluetooth scan and bluetooth connect access so this app can detect peripherals." );
                 builder.setPositiveButton( android.R.string.ok, null );
                 builder.setOnDismissListener( new DialogInterface.OnDismissListener()
                 {
@@ -229,17 +230,11 @@ public class MainActivity extends AppCompatActivity
         };
 
         mPlayFiBLESDK.setOnDeviceConnectionListener( deviceConnectionListener );
-        mDeviceListView.setOnItemClickListener( new AdapterView.OnItemClickListener()
-        {
-            @Override
-            public void onItemClick( AdapterView< ? > parent, View view, int position, long id )
-            {
-                BluetoothDevice device = ( BluetoothDevice ) arrayAdapter.getItem( position );
-                Log.d( TAG, "onItemClick: pos = " + device.getName() );
-                Log.d( TAG, "onItemClick: pos = " + device.getAddress() );
-                mPlayFiBLESDK.connect( device );
-            }
-
+        mDeviceListView.setOnItemClickListener( ( parent, view, position, id ) -> {
+            BluetoothDevice device = ( BluetoothDevice ) arrayAdapter.getItem( position );
+            Log.d( TAG, "onItemClick: pos = " + device.getName() );
+            Log.d( TAG, "onItemClick: pos = " + device.getAddress() );
+            mPlayFiBLESDK.connect( device );
         } );
     }
 
