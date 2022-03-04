@@ -16,7 +16,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -36,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity
     private PlayFiBLESDK.OnDeviceConnectionListener deviceConnectionListener;
     private ArrayList< BluetoothDevice > mDeviceList;
     int mErrorCode;
+    private boolean bGotAllPermissions = false;
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -64,9 +65,9 @@ public class MainActivity extends AppCompatActivity
         mDeviceListView = findViewById( R.id.listview );
 
         mDeviceList = new ArrayList<>();
-        ArrayAdapter<BluetoothDevice> arrayAdapter = new ArrayAdapter<BluetoothDevice>( MainActivity.this,
-                                                                                        android.R.layout.simple_list_item_1,
-                                                                                        android.R.id.text1, mDeviceList );
+        ArrayAdapter< BluetoothDevice > arrayAdapter = new ArrayAdapter< BluetoothDevice >( MainActivity.this,
+                                                                                            android.R.layout.simple_list_item_1,
+                                                                                            android.R.id.text1, mDeviceList );
         mDeviceListView.setAdapter( arrayAdapter );
 
         mPlayFiBLESDK = PlayFiBLESDK.getInstance();
@@ -141,28 +142,7 @@ public class MainActivity extends AppCompatActivity
         } );
 
 
-        // Make sure we have access coarse location enabled, if not, prompt the user to enable it
-        if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M )
-        {
-            if( this.checkSelfPermission( Manifest.permission.ACCESS_COARSE_LOCATION ) != PackageManager.PERMISSION_GRANTED ||
-                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_SCAN ) != PackageManager.PERMISSION_GRANTED ||
-                    this.checkSelfPermission( Manifest.permission.BLUETOOTH_CONNECT ) != PackageManager.PERMISSION_GRANTED )
-            {
-                final AlertDialog.Builder builder = new AlertDialog.Builder( this );
-                builder.setTitle( "This app needs Location, Bluetooth Scan and Bluetooth Connect access" );
-                builder.setMessage( "Please grant location, bluetooth scan and bluetooth connect access so this app can detect peripherals." );
-                builder.setPositiveButton( android.R.string.ok, null );
-                builder.setOnDismissListener( new DialogInterface.OnDismissListener()
-                {
-                    @Override
-                    public void onDismiss( DialogInterface dialog )
-                    {
-                        requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_SCAN }, PERMISSION_REQUEST_COARSE_LOCATION );
-                    }
-                } );
-                builder.show();
-            }
-        }
+        checkPermissionsFlow();
 
         // Device scan callback.
 
@@ -173,9 +153,16 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick( View view )
             {
-                arrayAdapter.clear();
-                arrayAdapter.notifyDataSetChanged();
-                mPlayFiBLESDK.scanDevices();
+                if( bGotAllPermissions )
+                {
+                    arrayAdapter.clear();
+                    arrayAdapter.notifyDataSetChanged();
+                    mPlayFiBLESDK.scanDevices();
+                }
+                else
+                {
+                    checkPermissionsFlow();
+                }
             }
         } );
 
@@ -236,6 +223,75 @@ public class MainActivity extends AppCompatActivity
             Log.d( TAG, "onItemClick: pos = " + device.getAddress() );
             mPlayFiBLESDK.connect( device );
         } );
+    }
+
+    private void checkPermissionsFlow()
+    {
+        Log.d( TAG, "checking for permissions..." );
+
+        // Make sure we have access coarse location enabled, if not, prompt the user to enable it
+        if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M )
+        {
+            if( ContextCompat.checkSelfPermission( this, Manifest.permission.ACCESS_FINE_LOCATION ) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission( this, Manifest.permission.BLUETOOTH_SCAN ) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission( this, Manifest.permission.BLUETOOTH_CONNECT ) == PackageManager.PERMISSION_GRANTED )
+            {
+                Log.d( TAG, "All permissions are granted!" );
+                bGotAllPermissions = true;
+                Toast.makeText( getApplicationContext(), "All permissions are granted!", Toast.LENGTH_SHORT ).show();
+            }
+            else if( shouldShowRequestPermissionRationale( Manifest.permission.ACCESS_FINE_LOCATION ) ||
+                    shouldShowRequestPermissionRationale( Manifest.permission.BLUETOOTH_SCAN ) ||
+                    shouldShowRequestPermissionRationale( Manifest.permission.BLUETOOTH_CONNECT ) )
+            {
+                // In an educational UI, explain to the user why your app requires this
+                // permission for a specific feature to behave as expected. In this UI,
+                // include a "cancel" or "no thanks" button that allows the user to
+                // continue using your app without granting the permission.
+                showContextUI();
+                Log.d( TAG, "Showing context UI" );
+            }
+            else
+            {
+                Log.d( TAG, "permissions not granted... already shown rationale dialog... requesting for manuel..." );
+                // You can directly ask for the permission.
+                if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S )
+                {
+                    requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION,
+                                                Manifest.permission.BLUETOOTH_SCAN,
+                                                Manifest.permission.BLUETOOTH_CONNECT },
+                                        PERMISSION_REQUEST_COARSE_LOCATION );
+
+                }
+                else
+                {
+                    requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
+                                        PERMISSION_REQUEST_COARSE_LOCATION );
+                }
+            }
+        }
+    }
+
+    private void showContextUI()
+    {
+        final AlertDialog.Builder builder = new AlertDialog.Builder( this );
+        builder.setTitle( "We need those permissions" );
+        builder.setMessage( "All those permissions are required to function this app properly" );
+        builder.setPositiveButton( android.R.string.ok, new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick( DialogInterface dialog, int which )
+            {
+                if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S )
+                {
+                    requestPermissions( new String[]{ Manifest.permission.ACCESS_FINE_LOCATION,
+                                                Manifest.permission.BLUETOOTH_SCAN,
+                                                Manifest.permission.BLUETOOTH_CONNECT },
+                                        PERMISSION_REQUEST_COARSE_LOCATION );
+                }
+            }
+        } );
+        builder.show();
     }
 
     private void enableLocation()
@@ -299,15 +355,19 @@ public class MainActivity extends AppCompatActivity
         {
             case PERMISSION_REQUEST_COARSE_LOCATION:
             {
-                if( grantResults[ 0 ] == PackageManager.PERMISSION_GRANTED )
+                Log.d( TAG, "onRequestPermissionsResult() called with: requestCode = [" + requestCode + "], permissions = [" + Arrays.toString( permissions ) + "], grantResults = [" + Arrays.toString( grantResults ) + "]" );
+                if( grantResults[ 0 ] == PackageManager.PERMISSION_GRANTED &&
+                        grantResults[ 1 ] == PackageManager.PERMISSION_GRANTED &&
+                        grantResults[ 2 ] == PackageManager.PERMISSION_GRANTED )
                 {
-                    System.out.println( "coarse location permission granted" );
+                    bGotAllPermissions = true;
+                    Log.d( TAG, "onRequestPermissionsResult() called -- All permissions granted." );
                 }
                 else
                 {
                     final AlertDialog.Builder builder = new AlertDialog.Builder( this );
                     builder.setTitle( "Functionality limited" );
-                    builder.setMessage( "Since location access has not been granted, this app will not be able to discover beacons when in the background." );
+                    builder.setMessage( "Some permissions have not been granted. please grant access to all permissions from settings." );
                     builder.setPositiveButton( android.R.string.ok, null );
                     builder.setOnDismissListener( new DialogInterface.OnDismissListener()
                     {

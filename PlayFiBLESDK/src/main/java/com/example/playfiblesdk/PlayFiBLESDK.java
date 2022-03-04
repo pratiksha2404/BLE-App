@@ -183,6 +183,7 @@ public class PlayFiBLESDK
             mDeviceList.clear();
             if( scanCallback != null && bluetoothLeScanner != null )
             {
+                Log.d( TAG, "startScan() called" );
                 bluetoothLeScanner.startScan( scanCallback );
             }
             else
